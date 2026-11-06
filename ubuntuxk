@@ -39,9 +39,9 @@ update_initramfs() {
 while true; do
     echo
     echo "================ 请选择操作 ================"
-    echo "1) 验证是否禁用开源驱动：lsmod | grep nouveau"
-    echo "2) 禁用开源显卡驱动：写入 blacklist-nouveau.conf"
-    echo "3) 更新当前内核的 initramfs 镜像：update-initramfs -u"
+    echo "1) 首先第一步要验证是否禁用开源驱动：lsmod | grep nouveau"
+    echo "2) 要没有禁用的话选这个禁用开源显卡驱动：写入 blacklist-nouveau.conf"
+    echo "3) 这步是第2步禁用显卡驱动后后要更新当前内核，没运行第2步不用运行这个 initramfs 镜像：update-initramfs -u"
     echo "q) 退出"
     echo "============================================"
     read -r -p "请输入选择 [1/2/3/q]: " choice
