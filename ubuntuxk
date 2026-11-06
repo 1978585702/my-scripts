@@ -9,9 +9,10 @@ check_nouveau() {
         echo "$output"
         echo
         echo "结果：检测到 nouveau 已加载，说明开源驱动【未禁用成功】。"
-        echo "请选择 2 执行禁用，然后选择 3 更新 initramfs，最后重启电脑。"
+        echo "请选择 2 执行禁用，然后选择 3 更新 initramfs，重启后再选 4 安装显卡驱动。"
     else
         echo "结果：没有输出，说明 nouveau 未加载，开源驱动【禁用成功】。"
+        echo "可以继续选择 4 自动安装显卡驱动。"
     fi
 }
 
@@ -36,15 +37,40 @@ update_initramfs() {
     fi
 }
 
+install_drivers() {
+    echo "即将运行：sudo ubuntu-drivers autoinstall"
+    echo "注意：建议先完成第 1~3 步（禁用 nouveau 并重启）后再安装驱动。"
+    read -r -p "确认继续安装显卡驱动？[y/N]: " confirm
+    case "$confirm" in
+        y|Y)
+            echo "正在自动安装显卡驱动，请稍候..."
+            if sudo ubuntu-drivers autoinstall; then
+                echo
+                echo "显卡驱动安装完成。请重启电脑使驱动生效："
+                echo "    sudo reboot"
+            else
+                echo "安装失败，请检查上面的错误信息。"
+            fi
+            ;;
+        *)
+            echo "已取消安装。"
+            ;;
+    esac
+}
+
 while true; do
     echo
     echo "================ 请选择操作 ================"
-    echo "1) 首先第一步要验证是否禁用开源驱动，如果运行这个结果：没有输出。说明开源驱动是禁用的，直接运行第4步安装显卡驱动：lsmod | grep nouveau"
-    echo "2) 要没有禁用的话选这个禁用开源显卡驱动：写入 blacklist-nouveau.conf"
-    echo "3) 这步是第2步禁用显卡驱动后后要更新当前内核，没运行第2步不用运行这个，注意这个运行成功后要重启电脑 initramfs 镜像：update-initramfs -u"
+    echo "1) 第一步：验证是否禁用开源驱动。若结果【没有输出】，说明开源驱动已禁用，可直接选第4步安装显卡驱动。"
+    echo "   命令：lsmod | grep nouveau"
+    echo "2) 若第1步检测到 nouveau 仍加载，选此项禁用开源显卡驱动：写入 blacklist-nouveau.conf"
+    echo "3) 第2步禁用后必须更新当前内核 initramfs；未运行第2步不用运行本项。更新成功后需重启电脑。"
+    echo "   命令：sudo update-initramfs -u"
+    echo "4) 自动安装显卡驱动（运行后需重启电脑）"
+    echo "   命令：sudo ubuntu-drivers autoinstall"
     echo "q) 退出"
     echo "============================================"
-    read -r -p "请输入选择 [1/2/3/q]: " choice
+    read -r -p "请输入选择 [1/2/3/4/q]: " choice
 
     case "$choice" in
         1)
@@ -56,12 +82,15 @@ while true; do
         3)
             update_initramfs
             ;;
+        4)
+            install_drivers
+            ;;
         q|Q)
             echo "已退出。"
             exit 0
             ;;
         *)
-            echo "无效选择，请输入 1、2、3 或 q。"
+            echo "无效选择，请输入 1、2、3、4 或 q。"
             ;;
     esac
 done
