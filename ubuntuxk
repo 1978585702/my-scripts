@@ -1,1 +1,67 @@
+#!/usr/bin/env bash
 
+check_nouveau() {
+    echo "正在检查：lsmod | grep nouveau"
+    local output
+    output="$(lsmod | grep nouveau || true)"
+
+    if [ -n "$output" ]; then
+        echo "$output"
+        echo
+        echo "结果：检测到 nouveau 已加载，说明开源驱动【未禁用成功】。"
+        echo "请选择 2 执行禁用，然后选择 3 更新 initramfs，最后重启电脑。"
+    else
+        echo "结果：没有输出，说明 nouveau 未加载，开源驱动【禁用成功】。"
+    fi
+}
+
+disable_nouveau() {
+    echo "正在写入 /etc/modprobe.d/blacklist-nouveau.conf ..."
+    sudo tee /etc/modprobe.d/blacklist-nouveau.conf > /dev/null <<'EOF'
+blacklist nouveau
+options nouveau modeset=0
+EOF
+    echo "写入完成。"
+    echo "下一步请选择 3 更新 initramfs，然后重启电脑。"
+}
+
+update_initramfs() {
+    echo "正在更新当前内核的 initramfs 镜像..."
+    if sudo update-initramfs -u; then
+        echo
+        echo "更新完成。请重启电脑使禁用生效："
+        echo "    sudo reboot"
+    else
+        echo "更新失败，请检查上面的错误信息。"
+    fi
+}
+
+while true; do
+    echo
+    echo "================ 请选择操作 ================"
+    echo "1) 验证是否禁用开源驱动：lsmod | grep nouveau"
+    echo "2) 禁用开源显卡驱动：写入 blacklist-nouveau.conf"
+    echo "3) 更新当前内核的 initramfs 镜像：update-initramfs -u"
+    echo "q) 退出"
+    echo "============================================"
+    read -r -p "请输入选择 [1/2/3/q]: " choice
+
+    case "$choice" in
+        1)
+            check_nouveau
+            ;;
+        2)
+            disable_nouveau
+            ;;
+        3)
+            update_initramfs
+            ;;
+        q|Q)
+            echo "已退出。"
+            exit 0
+            ;;
+        *)
+            echo "无效选择，请输入 1、2、3 或 q。"
+            ;;
+    esac
+done
