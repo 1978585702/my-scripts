@@ -1,11 +1,48 @@
 #!/bin/bash
-# 在下载文件夹中新建 cesh 文件夹
+# 管理下载文件夹中的 cesh 文件夹：新建 / 删除
 
-TARGET="$HOME/Downloads/cesh1"
+TARGET="$HOME/Downloads/cesh"
 
-if [ -d "$TARGET" ]; then
-  echo "文件夹已存在：$TARGET"
-else
-  mkdir -p "$TARGET"
-  echo "✅ 已创建：$TARGET"
-fi
+show_menu() {
+  echo "请选择操作："
+  echo "  1) 新建文件夹 cesh"
+  echo "  2) 删除文件夹 cesh"
+  echo "  0) 退出"
+}
+
+while true; do
+  echo
+  show_menu
+  read -p "输入数字并回车: " choice
+
+  case "$choice" in
+    1)
+      if [ -d "$TARGET" ]; then
+        echo "文件夹已存在：$TARGET"
+      else
+        mkdir -p "$TARGET"
+        echo "已创建：$TARGET"
+      fi
+      ;;
+    2)
+      if [ -d "$TARGET" ]; then
+        read -p "确定要删除 $TARGET 吗？(y/N) " ans
+        if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
+          rm -rf "$TARGET"
+          echo "已删除：$TARGET"
+        else
+          echo "已取消"
+        fi
+      else
+        echo "文件夹不存在：$TARGET"
+      fi
+      ;;
+    0)
+      echo "退出"
+      break
+      ;;
+    *)
+      echo "无效输入，请输入 1、2 或 0"
+      ;;
+  esac
+done
