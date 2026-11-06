@@ -6,7 +6,7 @@ TARGET="$HOME/Downloads/cesh"
 show_menu() {
   echo "请选择操作："
   echo "  1) 新建文件夹 cesh"
-  echo "  2) 删除文件夹 cesh"
+  echo "  2) 删除文件夹 cesh（移到废纸篓）"
   echo "  0) 退出"
 }
 
@@ -28,8 +28,9 @@ while true; do
       if [ -d "$TARGET" ]; then
         read -p "确定要删除 $TARGET 吗？(y/N) " ans
         if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
-          rm -rf "$TARGET"
-          echo "已删除：$TARGET"
+          NAME="cesh_$(date +%Y%m%d_%H%M%S)"
+          mv "$TARGET" "$HOME/.Trash/$NAME"
+          echo "已移到废纸篓：$NAME（可从废纸篓恢复）"
         else
           echo "已取消"
         fi
