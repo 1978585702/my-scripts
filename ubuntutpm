@@ -1,1 +1,130 @@
+#!/usr/bin/env bash
 
+# ============ 默认 LUKS 盘符，可自行修改 ============
+# 第4步默认使用此盘符；运行时也可以临时输入新的盘符
+LUKS_DEV="${LUKS_DEV:-/dev/nvme0n1p3}"
+
+# 第1步：扫描所有设备，重新触发硬件检测
+step1_trigger() {
+    echo "正在执行：sudo udevadm trigger"
+    if sudo udevadm trigger; then
+        echo "完成：已重新触发硬件检测。"
+    else
+        echo "执行失败，请检查错误信息。"
+    fi
+}
+
+# 第2步：取 TPM 内部的 PCR
+step2_pcrread() {
+    echo "正在执行：sudo tpm2_pcrread"
+    sudo tpm2_pcrread
+}
+
+# 第3步：查看哪个盘是 LUKS 盘
+step3_blkid() {
+    echo "正在执行：sudo blkid"
+    sudo blkid
+    echo
+    echo "提示：请在输出中找到 TYPE=\"crypto_LUKS\" 的分区，例如 /dev/nvme0n1p3。"
+    echo "第4步当前使用的盘符是：$LUKS_DEV"
+    echo "如果不一致，运行第4步时可以输入新的盘符。"
+}
+
+# 第4步：绑定 TPM 到 LUKS 盘
+step4_bind() {
+    echo "当前绑定的 LUKS 盘符：$LUKS_DEV"
+    read -r -p "直接回车使用该盘符，或输入新的盘符（如 /dev/sda3）: " dev_input
+    local dev="${dev_input:-$LUKS_DEV}"
+
+    echo
+    echo "将执行："
+    echo "sudo clevis luks bind -d $dev tpm2 '{\"pcr_bank\":\"sha256\",\"pcr_ids\":\"0,1,7\"}'"
+    echo
+    read -r -p "确认绑定 TPM？[y/N]: " confirm
+    case "$confirm" in
+        y|Y)
+            if sudo clevis luks bind -d "$dev" tpm2 '{"pcr_bank":"sha256","pcr_ids":"0,1,7"}'; then
+                echo "绑定完成。"
+            else
+                echo "绑定失败，请检查 clevis / tpm2 工具是否已安装，以及盘符是否正确。"
+            fi
+            ;;
+        *)
+            echo "已取消绑定。"
+            ;;
+    esac
+}
+
+# 第5步：查看 /etc/crypttab，确认与绑定的盘一致
+step5_crypttab() {
+    echo "正在执行：sudo cat /etc/crypttab"
+    sudo cat /etc/crypttab
+    echo
+    echo "请确认其中的设备与第4步绑定的盘符一致。"
+}
+
+# 第6步：更新 initramfs
+step6_initramfs() {
+    echo "将执行：sudo update-initramfs -u -k all"
+    read -r -p "确认更新 initramfs？[y/N]: " confirm
+    case "$confirm" in
+        y|Y)
+            if sudo update-initramfs -u -k all; then
+                echo "更新完成。"
+            else
+                echo "更新失败，请检查错误信息。"
+            fi
+            ;;
+        *)
+            echo "已取消更新。"
+            ;;
+    esac
+}
+
+# 第7步：重启电脑
+step7_reboot() {
+    echo "即将重启电脑。"
+    read -r -p "确认重启？[y/N]: " confirm
+    case "$confirm" in
+        y|Y)
+            sudo reboot
+            ;;
+        *)
+            echo "已取消重启。"
+            ;;
+    esac
+}
+
+# ================= 主菜单 =================
+while true; do
+    echo
+    echo "================ 请选择操作 ================"
+    echo "1) 扫描所有设备，重新触发硬件检测：sudo udevadm trigger"
+    echo "2) 读取 TPM 内部的 PCR：sudo tpm2_pcrread"
+    echo "3) 查看哪个盘是 LUKS 盘：sudo blkid"
+    echo "4) 绑定 TPM 到 LUKS 盘（盘符可自定义，当前：$LUKS_DEV）"
+    echo "   命令：sudo clevis luks bind -d <盘符> tpm2 '{\"pcr_bank\":\"sha256\",\"pcr_ids\":\"0,1,7\"}'"
+    echo "5) 查看 /etc/crypttab，确认与绑定的硬盘一致：sudo cat /etc/crypttab"
+    echo "6) 更新 initramfs：sudo update-initramfs -u -k all"
+    echo "7) 重启电脑：sudo reboot"
+    echo "q) 退出"
+    echo "============================================"
+    read -r -p "请输入选择 [1-7/q]: " choice
+
+    case "$choice" in
+        1) step1_trigger ;;
+        2) step2_pcrread ;;
+        3) step3_blkid ;;
+        4) step4_bind ;;
+        5) step5_crypttab ;;
+        6) step6_initramfs ;;
+        7) step7_reboot ;;
+        q|Q)
+            echo "已退出。"
+            exit 0
+            ;;
+        *)
+            echo "无效选择，请输入 1-7 或 q。"
+            ;;
+    esac
+done
